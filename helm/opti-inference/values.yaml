@@ -1,0 +1,39 @@
+image:
+  repository: ""   # set via CI: --set image.repository=<ECR_URL>
+  tag: "latest"
+  pullPolicy: Always
+
+replicaCount: 0
+
+service:
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  scheme: internet-facing
+
+resources:
+  requests:
+    memory: "4Gi"
+    cpu: "1"
+    nvidia.com/gpu: "1"
+  limits:
+    memory: "8Gi"
+    cpu: "4"
+    nvidia.com/gpu: "1"
+
+keda:
+  minReplicas: 0
+  maxReplicas: 10
+  queueLength: "5"
+  pollingInterval: 15
+  cooldownPeriod: 120
+  sqsQueueUrl: ""   # set via CI: --set keda.sqsQueueUrl=<URL>
+  awsRegion: "us-east-1"
+
+env:
+  AWS_REGION: "us-east-1"
+
+serviceAccount:
+  annotations: {}

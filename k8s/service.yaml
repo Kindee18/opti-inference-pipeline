@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opti-inference
+  namespace: inference
+spec:
+  selector:
+    app: opti-inference
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP

@@ -1,0 +1,28 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "opti-inference.fullname" . }}-auth
+spec:
+  podIdentity:
+    provider: aws
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "opti-inference.fullname" . }}-scaler
+spec:
+  scaleTargetRef:
+    name: {{ include "opti-inference.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: {{ include "opti-inference.fullname" . }}-auth
+      metadata:
+        queueURL: {{ .Values.keda.sqsQueueUrl | quote }}
+        queueLength: {{ .Values.keda.queueLength | quote }}
+        awsRegion: {{ .Values.keda.awsRegion | quote }}
+        identityOwner: pod
