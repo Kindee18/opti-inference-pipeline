@@ -7,6 +7,23 @@ on:
     branches: [main]
 
 jobs:
+  # 1. New Pre-Check job to enable clean skipping
+  check-secrets:
+    name: Check for Deployment Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has-aws-secrets: ${{ steps.check.outputs.defined }}
+    steps:
+      - id: check
+        env:
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        run: |
+          if [ -n "$AWS_KEY" ]; then
+            echo "defined=true" >> $GITHUB_OUTPUT
+          else
+            echo "defined=false" >> $GITHUB_OUTPUT
+          fi
+
   validate-app:
     name: Python Tests & PII Validation
     runs-on: ubuntu-latest
@@ -51,22 +68,14 @@ jobs:
   terraform-apply:
     name: Terraform Apply (Production)
     runs-on: ubuntu-latest
-    needs: validate-infra
+    needs: [validate-infra, check-secrets]
+    # THIS makes the job turn GRAY in the UI
+    if: needs.check-secrets.outputs.has-aws-secrets == 'true'
     steps:
       - uses: actions/checkout@v4
-      - name: Check for AWS Secrets
-        id: check-secrets
-        run: |
-          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "has_secrets=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_secrets=false" >> $GITHUB_OUTPUT
-          fi
       - name: Setup Terraform
-        if: steps.check-secrets.outputs.has_secrets == 'true'
         uses: hashicorp/setup-terraform@v3
       - name: Terraform Init
-        if: steps.check-secrets.outputs.has_secrets == 'true'
         run: terraform init
         working-directory: ./terraform
         env:
@@ -74,7 +83,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: "us-east-1"
       - name: Terraform Apply
-        if: steps.check-secrets.outputs.has_secrets == 'true'
         run: terraform apply -auto-approve
         working-directory: ./terraform
         env:
