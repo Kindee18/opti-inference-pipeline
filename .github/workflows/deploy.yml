@@ -7,13 +7,14 @@ on:
     branches: [main]
 
 jobs:
-  # 1. New Pre-Check job to enable clean skipping
+  # 1. Pre-Check job: Determines if secrets are available to enable clean job skipping (Gray icon)
   check-secrets:
     name: Check for Deployment Secrets
     runs-on: ubuntu-latest
     outputs:
       has-aws-secrets: ${{ steps.check.outputs.defined }}
     steps:
+      - uses: actions/checkout@v4
       - id: check
         env:
           AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -65,12 +66,12 @@ jobs:
           terraform init -backend=false
           terraform validate
 
+  # 2. Deployment job: Will only start if secrets are present, otherwise stays GRAY (Skipped)
   terraform-apply:
     name: Terraform Apply (Production)
     runs-on: ubuntu-latest
     needs: [validate-infra, check-secrets]
-    # THIS makes the job turn GRAY in the UI
-    if: needs.check-secrets.outputs.has-aws-secrets == 'true'
+    if: ${{ needs.check-secrets.outputs.has-aws-secrets == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Terraform
