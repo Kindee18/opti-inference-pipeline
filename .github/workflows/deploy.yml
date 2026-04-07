@@ -16,8 +16,17 @@ jobs:
       - name: Start LocalStack
         run: |
           docker run -d --name localstack -p 4566:4566 localstack/localstack:latest
-          # Simple wait for 200 OK on health endpoint
-          timeout 60s bash -c "until curl -s http://localhost:4566/_localstack/health; do sleep 2; done"
+          # Wait for LocalStack by checking if it responds to HTTP
+          for i in {1..30}; do
+            if curl -s http://localhost:4566/_localstack/health > /dev/null; then
+              echo "LocalStack is up!"
+              exit 0
+            fi
+            echo "Waiting for LocalStack... ($i)"
+            sleep 2
+          done
+          echo "LocalStack failed to start"
+          exit 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
