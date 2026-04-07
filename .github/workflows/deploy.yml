@@ -10,16 +10,14 @@ jobs:
   validate-app:
     name: Python Tests & PII Validation
     runs-on: ubuntu-latest
-    services:
-      localstack:
-        image: localstack/localstack:latest
-        ports:
-          - 4566:4566
-        env:
-          SERVICES: sqs
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start LocalStack
+        run: |
+          docker run -d --name localstack -p 4566:4566 localstack/localstack:latest
+          # Wait for LocalStack to be ready
+          timeout 60s bash -c "until curl -s http://localhost:4566/_localstack/health | grep -q '\"sqs\": \"running\"'; do sleep 2; done"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -37,6 +35,7 @@ jobs:
           AWS_ACCESS_KEY_ID: "test"
           AWS_SECRET_ACCESS_KEY: "test"
           AWS_REGION: "us-east-1"
+          AWS_ENDPOINT_URL: "http://localhost:4566"
         run: |
           # Create mock queue in LocalStack
           aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name test-queue --region us-east-1
