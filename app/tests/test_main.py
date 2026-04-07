@@ -1,8 +1,20 @@
 import pytest
 import os
 import sys
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
+
+# Mock heavy/missing dependencies before importing main
+mock_boto3 = MagicMock()
+mock_torch = MagicMock()
+mock_transformers = MagicMock()
+
+# Setup transformers mock to prevent errors on pipeline() call
+mock_pipeline = MagicMock()
+mock_transformers.pipeline = mock_pipeline
+
+sys.modules["boto3"] = mock_boto3
+sys.modules["torch"] = mock_torch
+sys.modules["transformers"] = mock_transformers
 
 # Set env before importing app
 os.environ["SKIP_MODEL_LOAD"] = "true"
@@ -11,11 +23,8 @@ os.environ["AWS_ACCESS_KEY_ID"] = "test"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "test"
 os.environ["AWS_REGION"] = "us-east-1"
 
-# Mock boto3 before it's used in main
-mock_boto3 = MagicMock()
-sys.modules["boto3"] = mock_boto3
-
 from main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -60,7 +69,6 @@ def test_metrics_endpoint():
         assert "http_requests_total" in response.text
 
 def test_enqueue():
-    # Since we mocked boto3 at the module level, we need to access the mock through main
     import main
     with client:
         payload = {
