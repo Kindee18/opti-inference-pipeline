@@ -59,8 +59,7 @@ jobs:
     name: Terraform Apply (Production)
     runs-on: ubuntu-latest
     needs: validate-infra
-    # Only run if AWS secrets are configured
-    if: secrets.AWS_ACCESS_KEY_ID != ''
+    if: "${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
     steps:
       - uses: actions/checkout@v4
       
