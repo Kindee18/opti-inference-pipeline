@@ -9,6 +9,10 @@ spec:
     matchLabels: {{ include "opti-inference.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.service.targetPort | quote }}
+        prometheus.io/path: "/metrics"
       labels: {{ include "opti-inference.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "opti-inference.fullname" . }}-sa
