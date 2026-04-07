@@ -30,8 +30,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "test"
           AWS_REGION: "us-east-1"
         run: |
+          cd app
           export PYTHONPATH=$PYTHONPATH:.
-          pytest app/tests/test_main.py
+          pytest tests/test_main.py
 
   validate-infra:
     name: Infrastructure Linting
