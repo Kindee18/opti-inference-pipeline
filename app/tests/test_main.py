@@ -1,11 +1,19 @@
 import pytest
 import os
+import sys
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
 # Set env before importing app
 os.environ["SKIP_MODEL_LOAD"] = "true"
 os.environ["SQS_QUEUE_URL"] = "http://mock-sqs"
+os.environ["AWS_ACCESS_KEY_ID"] = "test"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "test"
+os.environ["AWS_REGION"] = "us-east-1"
+
+# Mock boto3 before it's used in main
+mock_boto3 = MagicMock()
+sys.modules["boto3"] = mock_boto3
 
 from main import app
 
@@ -40,8 +48,6 @@ def test_pii_scrubbing():
             "client_id": "test-client",
             "workflow": "sentiment"
         }
-        # We can't easily check the internal state of the model call here without more mocks,
-        # but we can test the ComplianceManager directly or mock the model.
         from main import ComplianceManager
         scrubbed = ComplianceManager.scrub(payload["text"])
         assert "[EMAIL_MASKED]" in scrubbed
@@ -54,14 +60,15 @@ def test_metrics_endpoint():
         assert "http_requests_total" in response.text
 
 def test_enqueue():
-    with patch("main.sqs.send_message") as mock_send:
-        with client:
-            payload = {
-                "text": "Queue this message",
-                "client_id": "test-client",
-                "workflow": "sentiment"
-            }
-            response = client.post("/enqueue", json=payload)
-            assert response.status_code == 200
-            assert response.json()["queued"] is True
-            mock_send.assert_called_once()
+    # Since we mocked boto3 at the module level, we need to access the mock through main
+    import main
+    with client:
+        payload = {
+            "text": "Queue this message",
+            "client_id": "test-client",
+            "workflow": "sentiment"
+        }
+        response = client.post("/enqueue", json=payload)
+        assert response.status_code == 200
+        assert response.json()["queued"] is True
+        main.sqs.send_message.assert_called()

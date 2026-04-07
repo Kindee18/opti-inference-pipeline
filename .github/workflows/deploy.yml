@@ -13,21 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start LocalStack
-        run: |
-          docker run -d --name localstack -p 4566:4566 localstack/localstack:latest
-          # Wait for LocalStack by checking if it responds to HTTP
-          for i in {1..30}; do
-            if curl -s http://localhost:4566/_localstack/health > /dev/null; then
-              echo "LocalStack is up!"
-              exit 0
-            fi
-            echo "Waiting for LocalStack... ($i)"
-            sleep 2
-          done
-          echo "LocalStack failed to start"
-          exit 1
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -40,16 +25,11 @@ jobs:
       - name: Run PII & Metrics Tests
         env:
           SKIP_MODEL_LOAD: "true"
-          SQS_QUEUE_URL: "http://localhost:4566/000000000000/test-queue"
+          SQS_QUEUE_URL: "http://mock-sqs"
           AWS_ACCESS_KEY_ID: "test"
           AWS_SECRET_ACCESS_KEY: "test"
           AWS_REGION: "us-east-1"
-          AWS_ENDPOINT_URL: "http://localhost:4566"
         run: |
-          # Create mock queue in LocalStack
-          aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name test-queue --region us-east-1
-          
-          # Run tests
           export PYTHONPATH=$PYTHONPATH:.
           pytest app/tests/test_main.py
 
